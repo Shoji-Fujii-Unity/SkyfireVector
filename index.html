@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>SKYFIRE VECTOR ― 蒼穹のベクトル</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent;
+      user-select:none; -webkit-user-select:none; touch-action:none; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#000;
+    font-family:"Segoe UI", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", Arial, sans-serif; color:#eaf6ff; }
+  #app { position:fixed; inset:0; }
+  #gl { position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+  /* ---------- HUD ---------- */
+  #hud { position:absolute; inset:0; pointer-events:none; display:none; }
+  .panel { position:absolute; background:rgba(2,20,34,.55); border:1px solid rgba(80,200,255,.35);
+    border-radius:8px; padding:6px 10px; font-size:12px; backdrop-filter:blur(2px); }
+  #hudTL { top:max(8px, env(safe-area-inset-top)); left:max(8px, env(safe-area-inset-left)); min-width:150px; }
+  #hudTR { top:max(8px, env(safe-area-inset-top)); right:max(8px, env(safe-area-inset-right)); text-align:right; }
+  .barWrap { height:8px; background:#06202f; border-radius:4px; overflow:hidden; margin-top:3px; }
+  #hullBar { height:100%; width:100%; background:linear-gradient(90deg,#ff5533,#ffd24a,#3dffa0); transition:width .15s; }
+  #hudBR { bottom:max(76px, env(safe-area-inset-bottom)); right:max(8px, env(safe-area-inset-right)); }
+  #radar { display:block; width:120px; height:120px; }
+  #crosshair { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:34px; height:34px; opacity:.85; }
+  #lockBox { position:absolute; width:44px; height:44px; border:2px solid #ff4d6a; border-radius:4px;
+    display:none; transform:translate(-50%,-50%); box-shadow:0 0 10px rgba(255,77,106,.8) inset; }
+  #lockBox::after { content:"LOCK"; position:absolute; top:-16px; left:0; font-size:10px; color:#ff4d6a; letter-spacing:1px;}
+  #banner { position:absolute; left:50%; top:22%; transform:translateX(-50%); font-size:min(6vw,30px);
+    font-weight:700; letter-spacing:.35em; color:#8be9ff; text-shadow:0 0 18px rgba(60,180,255,.9);
+    opacity:0; transition:opacity .4s; white-space:nowrap; }
+  #dmgFlash { position:absolute; inset:0; background:radial-gradient(ellipse at center, transparent 55%, rgba(255,30,20,.65) 100%);
+    opacity:0; pointer-events:none; transition:opacity .1s; }
+  .lbl { color:#7fd4ff; font-size:10px; letter-spacing:.15em; }
+
+  /* ---------- Touch controls ---------- */
+  #touchUI { position:absolute; inset:0; display:none; pointer-events:none; }
+  #joyZone { position:absolute; left:0; top:0; bottom:0; width:46%; pointer-events:auto; }
+  #joyBase { position:absolute; width:110px; height:110px; border:2px solid rgba(120,220,255,.5);
+    border-radius:50%; display:none; background:rgba(10,40,60,.35); }
+  #joyKnob { position:absolute; width:48px; height:48px; border-radius:50%; display:none;
+    background:radial-gradient(circle at 35% 30%, #9beaff, #1b7fb8); box-shadow:0 0 12px rgba(80,200,255,.8); }
+  .tbtn { position:absolute; pointer-events:auto; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:13px; letter-spacing:.06em; color:#dff6ff;
+    background:rgba(8,40,62,.55); border:2px solid rgba(120,220,255,.55); }
+  .tbtn:active { background:rgba(90,200,255,.45); }
+  #btnFire  { right:max(18px, env(safe-area-inset-right)); bottom:max(20px, env(safe-area-inset-bottom)); width:96px; height:96px; font-size:16px;
+    border-color:rgba(255,140,120,.7); background:rgba(80,16,10,.45); }
+  #btnMissile { right:max(124px, calc(env(safe-area-inset-right) + 106px)); bottom:max(96px, env(safe-area-inset-bottom)); width:64px; height:64px; }
+  #btnBoost { right:max(124px, calc(env(safe-area-inset-right) + 106px)); bottom:max(20px, env(safe-area-inset-bottom)); width:64px; height:64px; }
+  #btnPause { top:max(52px, env(safe-area-inset-top)); right:max(8px, env(safe-area-inset-right)); pointer-events:auto;
+    width:34px; height:34px; border-radius:8px; background:rgba(2,20,34,.6); border:1px solid rgba(80,200,255,.4);
+    color:#9fe4ff; font-size:15px; display:flex; align-items:center; justify-content:center; }
+
+  /* ---------- Overlays ---------- */
+  .overlay { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 30%, rgba(6,32,58,.92), rgba(1,6,14,.97)); z-index:10; padding:16px; overflow:auto; }
+  .hidden { display:none !important; }
+  h1.title { font-size:min(9vw,54px); letter-spacing:.12em; font-weight:800; color:#fff;
+    text-shadow:0 0 22px #17c8ff, 0 0 60px #0a6cff; text-align:center; }
+  .subtitle { margin-top:6px; color:#8fd8ff; font-size:min(3.4vw,15px); letter-spacing:.3em; text-align:center; }
+  .menuBox { margin-top:22px; display:flex; flex-direction:column; gap:10px; width:min(92vw,360px); align-items:stretch; }
+  .rowBtns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  button.ui { pointer-events:auto; cursor:pointer; border:1px solid rgba(120,220,255,.55); background:rgba(10,48,74,.7);
+    color:#dff6ff; padding:10px 18px; border-radius:8px; font-size:14px; letter-spacing:.08em; }
+  button.ui.sel { background:linear-gradient(180deg,#1a9adf,#0b5f9e); color:#fff; box-shadow:0 0 14px rgba(30,170,255,.6); }
+  #btnStart { margin-top:14px; font-size:19px; padding:14px 46px; border-radius:12px;
+    background:linear-gradient(180deg,#ffb340,#ff6a2b); border:none; color:#241000; font-weight:800; letter-spacing:.2em;
+    box-shadow:0 0 24px rgba(255,140,50,.7); }
+  select.ui { appearance:none; }
+  .secLbl { margin-top:14px; font-size:11px; color:#6db8dd; letter-spacing:.25em; text-align:center; }
+  #hiScores { margin-top:6px; font-size:12px; line-height:1.7; color:#cfeeff; text-align:center; min-height:40px; white-space:pre-line; }
+  #statsLine { margin-top:8px; font-size:11px; color:#7fb8d8; text-align:center; }
+  #ctrlHint { margin-top:12px; font-size:11px; color:#9fd6f5; line-height:1.9; text-align:center; opacity:.9; }
+  .bigStat { font-size:min(7vw,34px); color:#ffd76a; font-weight:800; margin:6px 0 2px; text-shadow:0 0 16px rgba(255,190,60,.7);}
+  #newRec { color:#ff5d7a; font-weight:800; letter-spacing:.3em; animation:pulse 1s infinite alternate; }
+  @keyframes pulse { from{opacity:.5} to{opacity:1} }
+
+  /* ---------- Rotate (portrait) warning ---------- */
+  #rotateMsg { position:absolute; inset:0; z-index:40; background:#020810; display:none;
+    flex-direction:column; align-items:center; justify-content:center; gap:18px; text-align:center; padding:30px; }
+  #rotateMsg .phone { width:52px; height:86px; border:3px solid #4fd0ff; border-radius:10px; animation:rot 1.8s infinite ease-in-out; }
+  @keyframes rot { 0%,20%{transform:rotate(0)} 70%,100%{transform:rotate(-90deg)} }
+  @media (orientation:portrait) and (pointer:coarse) { #rotateMsg.show { display:flex; } }
+
+  #fatal { position:absolute; inset:0; display:none; align-items:center; justify-content:center; padding:30px;
+    background:#010610; color:#ffb0b0; font-size:14px; text-align:center; z-index:50; }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="panel" id="hudTL">
+      <span class="lbl" data-i18n="hull">HULL</span>
+      <div class="barWrap"><div id="hullBar"></div></div>
+      <div style="margin-top:5px"><span class="lbl" data-i18n="missiles">MISSILES</span> <b id="msCount">5</b></div>
+    </div>
+    <div class="panel" id="hudTR">
+      <span class="lbl" data-i18n="score">SCORE</span> <b id="scoreV">0</b><br>
+      <span class="lbl" data-i18n="wave">WAVE</span> <b id="waveV">1</b>&nbsp;&nbsp;
+      <span class="lbl">SPD</span> <b id="spdV">0</b><br>
+      <span class="lbl">ALT</span> <b id="altV">0</b>
+    </div>
+    <div class="panel" id="hudBR"><canvas id="radar" width="120" height="120"></canvas></div>
+    <svg id="crosshair" viewBox="0 0 34 34" fill="none" stroke="#8be9ff" stroke-width="1.6">
+      <circle cx="17" cy="17" r="9"/><line x1="17" y1="0" x2="17" y2="8"/><line x1="17" y1="26" x2="17" y2="34"/>
+      <line x1="0" y1="17" x2="8" y2="17"/><line x1="26" y1="17" x2="34" y2="17"/></svg>
+    <div id="lockBox"></div>
+    <div id="banner"></div>
+    <div id="dmgFlash"></div>
+  </div>
+
+  <!-- Touch controls -->
+  <div id="touchUI">
+    <div id="joyZone"><div id="joyBase"></div><div id="joyKnob"></div></div>
+    <div class="tbtn" id="btnFire">FIRE</div>
+    <div class="tbtn" id="btnMissile">MSL</div>
+    <div class="tbtn" id="btnBoost">BST</div>
+  </div>
+  <div id="btnPause" class="hidden">II</div>
+
+  <!-- Menu -->
+  <div id="menu" class="overlay">
+    <h1 class="title">✈ SKYFIRE VECTOR</h1>
+    <div class="subtitle" data-i18n="tagline">SKY DOMINANCE FLIGHT SHOOTER</div>
+
+    <div class="secLbl" data-i18n="difficulty">DIFFICULTY</div>
+    <div class="rowBtns">
+      <button class="ui diffBtn" data-d="easy"   data-i18n="easy">EASY</button>
+      <button class="ui diffBtn sel" data-d="normal" data-i18n="normal">NORMAL</button>
+      <button class="ui diffBtn" data-d="hard"   data-i18n="hard">HARD</button>
+    </div>
+
+    <div class="rowBtns" style="margin-top:14px">
+      <select id="langSel" class="ui"></select>
+      <button id="btnSound" class="ui">🔊 ON</button>
+    </div>
+
+    <button class="ui" id="btnStart" data-i18n="launch">LAUNCH</button>
+
+    <div class="secLbl" data-i18n="hiscore">HIGH SCORES</div>
+    <div id="hiScores"></div>
+    <div id="statsLine"></div>
+    <div id="ctrlHint"></div>
+  </div>
+
+  <!-- Pause -->
+  <div id="pause" class="overlay hidden">
+    <h1 class="title" style="font-size:min(7vw,36px)" data-i18n="paused">PAUSED</h1>
+    <div class="menuBox">
+      <button class="ui" id="btnResume" data-i18n="resume">RESUME</button>
+      <button class="ui" id="btnRestart" data-i18n="restart">RESTART</button>
+      <button class="ui" id="btnQuit" data-i18n="toMenu">MENU</button>
+    </div>
+  </div>
+
+  <!-- Game over -->
+  <div id="over" class="overlay hidden">
+    <h1 class="title" style="font-size:min(8vw,42px); color:#ff9d7a" data-i18n="gameOver">MISSION FAILED</h1>
+    <div class="lbl" data-i18n="finalScore">FINAL SCORE</div>
+    <div class="bigStat" id="finalScore">0</div>
+    <div id="newRec" class="hidden">★ NEW RECORD ★</div>
+    <div style="font-size:12px;color:#9fd6f5;margin-top:4px" id="overDetail"></div>
+    <div class="menuBox">
+      <button class="ui" id="btnAgain" data-i18n="restart">RESTART</button>
+      <button class="ui" id="btnMenu2" data-i18n="toMenu">MENU</button>
+    </div>
+  </div>
+
+  <div id="rotateMsg"><div class="phone"></div><div data-i18n="rotateMsg">Please rotate your device to landscape.</div></div>
+  <div id="fatal" data-i18n="fatal">WebGL could not be initialized. Please use a modern browser.</div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* ============================================================ i18n */
+const I18N = {
+ja:{tagline:"SKY DOMINANCE FLIGHT SHOOTER",difficulty:"難易度",easy:"イージー",normal:"ノーマル",hard:"ハード",
+ launch:"発進",hiscore:"ハイスコア",paused:"ポーズ",resume:"再開",restart:"リトライ",toMenu:"タイトルへ",
+ gameOver:"撃墜された…",finalScore:"スコア",hull:"装甲",missiles:"ミサイル",score:"スコア",wave:"ウェーブ",
+ rotateMsg:"端末を横にしてプレイしてください",fatal:"WebGL を初期化できません。対応ブラウザで開き直してください。",
+ sFlights:"出撃 {n} 回",sKills:"撃墜数 {n}",newRec:"ハイスコア更新！",waveBanner:"ウェーブ {n}",
+ ctrlKB:"操作: WASD/矢印=操縦 · SPACE=機関銃 · X/E=ミサイル · SHIFT=ブースト · P=ポーズ · M=消音",
+ ctrlTouch:"操作: 左画面=スティック · FIRE=射撃 · MSL=ミサイル · BST=ブースト"},
+en:{tagline:"SKY DOMINANCE FLIGHT SHOOTER",difficulty:"DIFFICULTY",easy:"EASY",normal:"NORMAL",hard:"HARD",
+ launch:"LAUNCH",hiscore:"HIGH SCORES",paused:"PAUSED",resume:"RESUME",restart:"RESTART",toMenu:"MENU",
+ gameOver:"SHOT DOWN",finalScore:"FINAL SCORE",hull:"HULL",missiles:"MISSILES",score:"SCORE",wave:"WAVE",
+ rotateMsg:"Please rotate your device to landscape.",fatal:"WebGL could not be initialized. Please use a modern browser.",
+ sFlights:"Sorties: {n}",sKills:"Kills: {n}",newRec:"NEW RECORD!",waveBanner:"WAVE {n}",
+ ctrlKB:"WASD/Arrows=Steer · SPACE=Guns · X/E=Missile · SHIFT=Boost · P=Pause · M=Mute",
+ ctrlTouch:"Left=Stick · FIRE=Guns · MSL=Missile · BST=Boost"},
+zh:{tagline:"制空权 3D 飞行射击",difficulty:"难度",easy:"简单",normal:"普通",hard:"困难",
+ launch:"出击",hiscore:"最高分",paused:"已暂停",resume:"继续",restart:"重来",toMenu:"返回标题",
+ gameOver:"任务失败",finalScore:"最终得分",hull:"装甲",missiles:"导弹",score:"得分",wave:"波次",
+ rotateMsg:"请将设备横屏游玩",fatal:"无法初始化 WebGL，请使用现代浏览器。",
+ sFlights:"出击 {n} 次",sKills:"击坠 {n}",newRec:"新纪录！",waveBanner:"第 {n} 波",
+ ctrlKB:"WASD/方向键=操纵 · 空格=机炮 · X/E=导弹 · SHIFT=加速 · P=暂停 · M=静音",
+ ctrlTouch:"左侧=摇杆 · FIRE=机炮 · MSL=导弹 · BST=加速"},
+ko:{tagline:"하늘 지배 3D 비행 슈팅",difficulty:"난이도",easy:"이지",normal:"노말",hard:"하드",
+ launch:"출격",hiscore:"하이스코어",paused:"일시정지",resume:"계속하기",restart:"재시작",toMenu:"타이틀로",
+ gameOver:" 격추당함",finalScore:"최종 점수",hull:"장갑",missiles:"미사일",score:"점수",wave:"웨이브",
+ rotateMsg:"기기를 가로로 돌려 주세요",fatal:"WebGL을 초기화할 수 없습니다. 최신 브라우저에서 열어 주세요.",
+ sFlights:"출격 {n}회",sKills:"격추 {n}",newRec:"신기록!",waveBanner:"웨이브 {n}",
+ ctrlKB:"WASD/방향키=조종 · 스페이스=기관총 · X/E=미사일 · SHIFT=부스트 · P=일시정지 · M=음소거",
+ ctrlTouch:"왼쪽=조이스틱 · FIRE=사격 · MSL=미사일 · BST=부스트"},
+es:{tagline:"SHOOTER AÉREO 3D",difficulty:"DIFICULTAD",easy:"FÁCIL",normal:"NORMAL",hard:"DIFÍCIL",
+ launch:"DESPEGAR",hiscore:"RÉCORDS",paused:"PAUSA",resume:"SEGUIR",restart:"REINICIAR",toMenu:"MENÚ",
+ gameOver:"ABATIDO",finalScore:"PUNTUACIÓN",hull:"CASCO",missiles:"MISILES",score:"PUNTOS",wave:"OLA",
+ rotateMsg:"Gira tu dispositivo a horizontal.",fatal:"No se pudo iniciar WebGL. Usa un navegador moderno.",
+ sFlights:"Salidas: {n}",sKills:"Bajas: {n}",newRec:"¡NUEVO RÉCORD!",waveBanner:"OLA {n}",
+ ctrlKB:"WASD/Flechas=Pilotar · ESPACIO=Cañones · X/E=Misil · SHIFT=Turbo · P=Pausa · M=Silencio",
+ ctrlTouch:"Izq.=Palanca · FIRE=Cañones · MSL=Misil · BST=Turbo"},
+};
+const LANGS = {ja:"日本語", en:"English", zh:"简体中文", ko:"한국어", es:"Español"};
+
+/* ============================================================ Save data */
+const SAVE_KEY = "skyfire_vector_save_v1";
+let save = { lang:null, sound:true, diff:"normal", best:[], stats:{flights:0,kills:0} };
+try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s) save = Object.assign(save, s); } catch(e){}
+if (!save.lang || !LANGS[save.lang]) {
+  const nav = (navigator.language||"en").slice(0,2).toLowerCase();
+  save.lang = LANGS[nav] ? nav : "en";
+}
+function persist(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }catch(e){} }
+
+/* ============================================================ i18n apply */
+const $ = id => document.getElementById(id);
+function T(key, vars){ let s = (I18N[save.lang] && I18N[save.lang][key]) || I18N.en[key] || key;
+  if (vars) for (const k in vars) s = s.replace("{"+k+"}", vars[k]); return s; }
+function applyLang(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{ el.textContent = T(el.dataset.i18n); });
+  $("ctrlHint").textContent = save.lang && matchMedia("(pointer:coarse)").matches ? T("ctrlTouch") : T("ctrlKB");
+  renderMenuMeta();
+}
+
+/* ============================================================ Audio (WebAudio synth) */
+const AudioMan = {
+  ctx:null, master:null, engineOsc:null, engineGain:null, noiseBuf:null,
+  ensure(){
+    if (this.ctx) { if (this.ctx.state==="suspended") this.ctx.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = save.sound ? 1 : 0;
+    this.master.connect(this.ctx.destination);
+    // noise buffer
+    const n = this.ctx.sampleRate * 1.2, b = this.ctx.createBuffer(1,n,this.ctx.sampleRate), d=b.getChannelData(0);
+    for (let i=0;i<n;i++) d[i] = Math.random()*2-1;
+    this.noiseBuf = b;
+  },
+  setSound(on){ save.sound = on; persist(); if (this.master) this.master.gain.value = on?1:0; },
+  blip(f0,f1,dur,type,vol){ if(!this.ctx)return; const t=this.ctx.currentTime;
+    const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+    o.type=type||"square"; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(Math.max(1,f1),t+dur);
+    g.gain.setValueAtTime(vol||.25,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g).connect(this.master); o.start(t); o.stop(t+dur+.02); },
+  burst(dur,freq,vol){ if(!this.ctx||!this.noiseBuf)return; const t=this.ctx.currentTime;
+    const s=this.ctx.createBufferSource(); s.buffer=this.noiseBuf;
+    const f=this.ctx.createBiquadFilter(); f.type="lowpass"; f.frequency.setValueAtTime(freq,t); f.frequency.exponentialRampToValueAtTime(60,t+dur);
+    const g=this.ctx.createGain(); g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    s.connect(f).connect(g).connect(this.master); s.start(t); s.stop(t+dur); },
+  gun(){ this.burst(.09,2400,.18); this.blip(320,120,.07,"square",.1); },
+  missile(){ this.blip(180,900,.5,"sawtooth",.22); this.burst(.5,900,.12); },
+  explode(big){ this.burst(big?.9:.45, big?1600:900, big?.6:.35); },
+  hit(){ this.blip(700,180,.12,"square",.18); },
+  hurt(){ this.burst(.3,500,.3); this.blip(140,60,.25,"sawtooth",.2); },
+  pickup(){ [520,660,840].forEach((f,i)=>setTimeout(()=>this.blip(f,f*1.3,.12,"triangle",.2),i*70)); },
+  ui(){ this.blip(900,600,.06,"triangle",.12); },
+  startEngine(){ if(!this.ctx||this.engineOsc)return;
+    const o1=this.ctx.createOscillator(), o2=this.ctx.createOscillator(), f=this.ctx.createBiquadFilter(), g=this.ctx.createGain();
+    o1.type="sawtooth"; o2.type="sawtooth"; o1.frequency.value=58; o2.frequency.value=61.5;
+    f.type="lowpass"; f.frequency.value=300; g.gain.value=.05;
+    o1.connect(f); o2.connect(f); f.connect(g).connect(this.master); o1.start(); o2.start();
+    this.engineOsc=[o1,o2]; this.engineGain=g; this.engineFilter=f; },
+  engine(speed,boost){ if(!this.engineOsc)return; const t=speed/300;
+    this.engineOsc[0].frequency.value = 48 + t*70 + (boost?18:0);
+    this.engineOsc[1].frequency.value = 50 + t*73 + (boost?20:0);
+    this.engineFilter.frequency.value = 240 + t*600 + (boost?300:0); },
+  stopEngine(){ if(this.engineOsc){ try{this.engineOsc[0].stop();this.engineOsc[1].stop();}catch(e){} this.engineOsc=null; } },
+};
+
+/* ============================================================ Three.js scene */
+let renderer, scene, camera;
+try {
+  renderer = new THREE.WebGLRenderer({canvas:$("gl"), antialias:false, powerPreference:"high-performance"});
+} catch(e){ $("fatal").style.display="flex"; throw e; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87c5e8);
+scene.fog = new THREE.Fog(0x9fcbe6, 400, 2400);
+camera = new THREE.PerspectiveCamera(62, 1, .5, 4000);
+
+const sun = new THREE.DirectionalLight(0xfff2d8, 1.9); sun.position.set(300,500,-200); scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xbfe6ff, 0x4a6b3a, .85));
+
+// sun disc + sky haze sprite
+{ const c=document.createElement("canvas"); c.width=c.height=128; const x=c.getContext("2d");
+  const g=x.createRadialGradient(64,64,4,64,64,64); g.addColorStop(0,"rgba(255,255,230,1)"); g.addColorStop(.3,"rgba(255,240,190,.55)"); g.addColorStop(1,"rgba(255,240,190,0)");
+  x.fillStyle=g; x.fillRect(0,0,128,128);
+  const tex=new THREE.CanvasTexture(c);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,fog:false}));
+  sp.scale.set(900,900,1); sp.position.copy(sun.position).multiplyScalar(3.2); scene.add(sp); }
+
+// cloud sprite texture
+function softTex(){ const c=document.createElement("canvas"); c.width=c.height=64; const x=c.getContext("2d");
+  const g=x.createRadialGradient(32,32,2,32,32,32); g.addColorStop(0,"rgba(255,255,255,.9)"); g.addColorStop(1,"rgba(255,255,255,0)");
+  x.fillStyle=g; x.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); }
+const cloudTex = softTex();
+
+/* ---- terrain noise (analytic so collision matches visuals) ---- */
+function hash(x,z){ let n=Math.sin(x*127.1+z*311.7)*43758.5453; return n-Math.floor(n); }
+function vnoise(x,z){ const xi=Math.floor(x), zi=Math.floor(z), xf=x-xi, zf=z-zi;
+  const u=xf*xf*(3-2*xf), v=zf*zf*(3-2*zf);
+  return hash(xi,zi)*(1-u)*(1-v)+hash(xi+1,zi)*u*(1-v)+hash(xi,zi+1)*(1-u)*v+hash(xi+1,zi+1)*u*v; }
+function terrainH(x,z){
+  let h = vnoise(x*.0022, z*.0022)*1.0 + vnoise(x*.0065, z*.0065)*.38 + vnoise(x*.02, z*.02)*.07;
+  h = Math.pow(Math.max(0,h-.42),1.6)*460;         // mountains
+  const flat = Math.min(1, (Math.abs(x)+Math.abs(z))>.001?1:1);
+  return h*flat;
+}
+
+/* ---- terrain tiles ---- */
+const TILE=420, TRANGE=2;
+const landMat=new THREE.MeshLambertMaterial({color:0x5aa04a, flatShading:true});
+const rockMat=new THREE.MeshLambertMaterial({color:0x8d7f6a, flatShading:true});
+const tiles=new Map();
+function tileMesh(cx,cz){
+  const geo=new THREE.PlaneGeometry(TILE,TILE,26,26); geo.rotateX(-Math.PI/2);
+  const pos=geo.attributes.position; const cols=[];
+  for(let i=0;i<pos.count;i++){
+    const x=cx*TILE+pos.getX(i), z=cz*TILE+pos.getZ(i), h=terrainH(x,z);
+    pos.setY(i,h);
+    const c = h>95? rockMat : (h>45? rockMat : landMat);
+    cols.push(c===rockMat? new THREE.Color(0x8d7f6a) : (h<3? new THREE.Color(0xc9c28a): new THREE.Color(0x4f9440 + (vnoise(x*.1,z*.1)*30|0))));
+  }
+  geo.setAttribute("color", new THREE.Float32BufferAttribute([].concat(...cols.map(c=>[c.r,c.g,c.b])),3));
+  const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true,flatShading:true}));
+  m.position.set(cx*TILE,0,cz*TILE); scene.add(m); return m;
+}
+function updateTiles(px,pz){
+  const cx=Math.round(px/TILE), cz=Math.round(pz/TILE);
+  for(let i=-TRANGE;i<=TRANGE;i++)for(let j=-TRANGE;j<=TRANGE;j++){
+    const k=(cx+i)+","+ (cz+j);
+    if(!tiles.has(k)) tiles.set(k, tileMesh(cx+i,cz+j));
+  }
+  for(const [k,m] of tiles){ const [a,b]=k.split(",").map(Number);
+    if(Math.abs(a-cx)>TRANGE||Math.abs(b-cz)>TRANGE){ scene.remove(m); m.geometry.dispose(); m.material.dispose(); tiles.delete(k);} }
+}
+
+/* ---- clouds (wrap-around field) ---- */
+const cloudGroup=new THREE.Group(); scene.add(cloudGroup);
+const CLOUD_N=46, CFIELD=2200, clouds=[];
+for(let i=0;i<CLOUD_N;i++){
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,transparent:true,opacity:.75,depthWrite:false}));
+  s.position.set((Math.random()-.5)*CFIELD, 180+Math.random()*320, (Math.random()-.5)*CFIELD);
+  const w=140+Math.random()*260; s.scale.set(w,w*.45,1); cloudGroup.add(s); clouds.push(s);
+}
+
+/* ---- aircraft builders ---- */
+function buildJet(main, accent){
+  const g=new THREE.Group();
+  const mB=new THREE.MeshLambertMaterial({color:main}), mA=new THREE.MeshLambertMaterial({color:accent});
+  const fus=new THREE.Mesh(new THREE.CylinderGeometry(1.1,.6,9,8),mB); fus.rotation.x=Math.PI/2; g.add(fus);
+  const nose=new THREE.Mesh(new THREE.ConeGeometry(1.1,3,8),mA); nose.rotation.x=-Math.PI/2; nose.position.z=-6; g.add(nose);
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(14,.4,3.2),mB); wing.position.set(0,0,.6); g.add(wing);
+  const tail=new THREE.Mesh(new THREE.BoxGeometry(5,.3,1.6),mA); tail.position.set(0,0,3.8); g.add(tail);
+  const fin=new THREE.Mesh(new THREE.BoxGeometry(.4,2.6,2),mA); fin.position.set(0,1.4,3.6); g.add(fin);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,color:0x66ccff,transparent:true,depthWrite:false}));
+  glow.scale.set(5,5,1); glow.position.z=5; g.add(glow);
+  return g;
+}
+const playerModel = buildJet(0xdfe8ee, 0xff7a3c);
+const modelRoll = new THREE.Group(); scene.add(modelRoll); // physics group holds camera math; roll child
+scene.add(playerModel);
+
+/* ============================================================ Game state */
+const S={ mode:"menu", paused:false, time:0, wave:1, waveT:0, score:0, hull:100, missiles:5,
+  speed:150, boost:false, firing:false, spawnT:2, shake:0, overT:0, kills:0 };
+const player={ pos:new THREE.Vector3(0,260,0), quat:new THREE.Quaternion() };
+let enemies=[], pBullets=[], eBullets=[], missiles=[], pickups=[], parts=[];
+
+const DIFF = { easy:{rate:.65,hp:.7,dmg:.6,alive:5}, normal:{rate:1,hp:1,dmg:1,alive:7}, hard:{rate:1.5,hp:1.4,dmg:1.5,alive:9} };
+function D(){ return DIFF[save.diff]; }
+
+/* particle pool */
+for(let i=0;i<70;i++){
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,transparent:true,depthWrite:false}));
+  s.visible=false; scene.add(s); parts.push({s,v:new THREE.Vector3(),life:0,max:1,size:1});
+}
+function boom(pos,color,big){
+  AudioMan.explode(big);
+  const n=big?14:7;
+  for(let i=0;i<n;i++){
+    const p=parts.find(p=>p.life<=0); if(!p)return;
+    p.s.visible=true; p.s.position.copy(pos);
+    p.v.set((Math.random()-.5),(Math.random()-.5),(Math.random()-.5)).normalize().multiplyScalar(big?90:50).add(new THREE.Vector3(0,20,0));
+    p.life=p.max=big?.9:.55; p.size=(big?46:26)*(0.6+Math.random()*.8);
+    p.s.material.color.set(color);
+  }
+}
+function puff(pos,color,size){
+  const p=parts.find(p=>p.life<=0); if(!p)return;
+  p.s.visible=true; p.s.position.copy(pos);
+  p.v.set((Math.random()-.5)*8, Math.random()*6, (Math.random()-.5)*8);
+  p.life=p.max=.7+Math.random()*.4; p.size=size||10;
+  p.s.material.color.set(color);
+}
+
+/* ============================================================ Enemies */
+const ETYPES={
+  fighter:{hp:60, spd:120, color:0x9aa7b5, acc:0xff5a3c, score:100, r:8},
+  elite:  {hp:85, spd:180, color:0xb04a4a, acc:0xffd24a, score:250, r:8},
+  bomber: {hp:210,spd:80,  color:0x5c6e5c, acc:0x30353a, score:400, r:13},
+};
+function spawnEnemy(){
+  const roll=Math.random(), wave=S.wave;
+  const type = wave>=3 && roll<.18 ? "bomber" : (wave>=2 && roll<.42 ? "elite":"fighter");
+  const et=ETYPES[type];
+  const g=buildJet(et.color,et.acc); g.scale.setScalar(type==="bomber"?1.5:1);
+
+  // ★重要: ここで機体の位置を必ず設定する（バグ修正）
+  // 自機の前方±40°の円弧上、700〜1100の距離に出現
+  const ang=(Math.random()-.5)*1.4;
+  const off=new THREE.Vector3(Math.sin(ang),0,-Math.cos(ang))
+    .applyQuaternion(player.quat).multiplyScalar(700+Math.random()*400);
+  const pos=player.pos.clone().add(off);
+  pos.y=Math.max(160,Math.min(750, player.pos.y+(Math.random()-.5)*260));
+  pos.y=Math.max(pos.y, terrainH(pos.x,pos.z)+80);   // 地形めり込み防止
+  g.position.copy(pos);
+
+  scene.add(g);
+  enemies.push({g, type, hp:et.hp*D().hp, maxhp:et.hp*D().hp, spd:et.spd*(1+wave*.03),
+    dir:new THREE.Vector3(), fireT:1.5+Math.random()*2, r:et.r});
+  steerTo(enemies[enemies.length-1], player.pos.clone());  // 生成直後にこちらへ向かわせる
+}
+function steerTo(e,target){
+  const d=target.clone().sub(e.g.position).normalize(); if(d.lengthSq()<.5)d.set(0,0,-1); e.dir.copy(d);
+}
+function updateEnemy(e,dt){
+  const toP=player.pos.clone().sub(e.g.position); const dist=toP.length();
+  const attacking = dist<820;          // 攻撃圏内
+
+  // --- 旋回: 通常は高度維持＋うっすら追走、攻撃圏内なら積極的に機首を向ける ---
+  if(e.g.position.y < 160){
+    steerTo(e, new THREE.Vector3(e.g.position.x, terrainH(e.g.position.x,e.g.position.z)+70, e.g.position.z));
+  } else if(attacking){
+    const aim = player.pos.clone().addScaledVector(forward(), 60);   // 少し先回りして照準
+    if(e.type==="elite") steerTo(e, aim);                             // エリートは常時
+    else if(Math.random()<dt*(e.type==="bomber"?1.2:3.0)) steerTo(e, aim);  // 他も高頻度で修正
+  } else {
+    const ahead=player.pos.clone().addScaledVector(forward(),250);
+    if(e.type==="elite") steerTo(e,ahead);
+    else if (Math.random()<dt*.8) steerTo(e,ahead);
+  }
+  e.g.position.addScaledVector(e.dir, e.spd*dt*(attacking?1.05:1));
+  e.g.lookAt(e.g.position.clone().add(e.dir));
+
+  // --- 射撃 ---
+  if(attacking && e.dir.dot(toP.normalize())>.94){    // 照準許容を広げ命中率UP
+    e.fireT-=dt;
+    if(e.fireT<=0){
+      const waveK = 1/(1+S.wave*.06);                 // ウェーブが上がるほど短サイクル
+      e.fireT = (e.type==="bomber"?1.5 : e.type==="elite"?0.85 : 1.1) * waveK / D().rate + Math.random()*.3;
+
+      // プレイヤーの速度を考慮した先行照準（リード射撃）
+      const bulletSpd = 400;
+      const lead = player.pos.clone()
+        .addScaledVector(forward(), S.speed*(dist/bulletSpd))
+        .sub(e.g.position).normalize();
+      const baseDir = e.dir.clone().lerp(lead, .75).normalize();  // 8割リードに寄せる
+
+      const shots = [];
+      if(e.type==="bomber"){                            // 3連スプレッド弾
+        for(const s of [-0.12,0,0.12]) shots.push(baseDir.clone().applyAxisAngle(new THREE.Vector3(0,1,0),s));
+      } else if(e.type==="elite" && Math.random()<.5){  // エリートは時速バースト（2連射）
+        e.fireT+=.14; shots.push(baseDir, baseDir.clone());
+      } else {
+        shots.push(baseDir);
+      }
+      for(const d of shots){
+        const m=new THREE.Mesh(new THREE.SphereGeometry(1.5,6,6),new THREE.MeshBasicMaterial({color:0xff9d3c}));
+        m.position.copy(e.g.position).addScaledVector(d,e.r+2); scene.add(m);
+        eBullets.push({m,v:d.clone().multiplyScalar(bulletSpd),life:3.2});
+      }
+    }
+  }
+}
+
+/* ============================================================ helpers */
+function forward(){ return new THREE.Vector3(0,0,-1).applyQuaternion(player.quat); }
+function forwardP(p){ return new THREE.Vector3(0,0,-1).applyQuaternion(player.quat); }
+function clearAll(){
+  [...enemies.map(e=>e.g),...pBullets,...eBullets,...missiles.map(m=>m.m),...pickups].forEach(o=>scene.remove(o));
+  enemies=[];pBullets=[];eBullets=[];missiles=[];pickups=[];
+}
+
+/* ============================================================ Input */
+const keys={}; let joyX=0, joyY=0, touchBoost=false, mouseDown=false;
+addEventListener("keydown",e=>{
+  keys[e.code]=true;
+  if(e.code==="KeyP") togglePause();
+  if(e.code==="KeyM"){ AudioMan.setSound(!save.sound); syncSoundBtn(); }
+  if(e.code==="KeyX"||e.code==="KeyE") fireMissile();   // ← 追加
+  if(["Space","ArrowUp","ArrowDown"].includes(e.code)) e.preventDefault();
+});
+addEventListener("keyup",e=>keys[e.code]=false);
+
+const isTouch = matchMedia("(pointer:coarse)").matches;
+if (isTouch) $("touchUI").style.display="block";
+
+function bindHold(el,on,off){
+  el.addEventListener("pointerdown",e=>{e.preventDefault();AudioMan.ensure();on();});
+  el.addEventListener("pointerup",e=>{off&&off();});
+  el.addEventListener("pointercancel",()=>off&&off());
+  el.addEventListener("pointerleave",()=>off&&off());
+}
+bindHold($("btnFire"),()=>S.firing=true,()=>S.firing=false);
+bindHold($("btnBoost"),()=>touchBoost=true,()=>touchBoost=false);
+$("btnMissile").addEventListener("pointerdown",e=>{e.preventDefault();fireMissile();});
+
+const jz=$("joyZone"),jb=$("joyBase"),jk=$("joyKnob");
+let joyId=null,jcx=0,jcy=0;
+jz.addEventListener("pointerdown",e=>{ if(joyId!==null)return; AudioMan.ensure(); joyId=e.pointerId; jcx=e.clientX;jcy=e.clientY;
+  jb.style.display=jk.style.display="block"; jb.style.left=(jcx-55)+"px"; jb.style.top=(jcy-55)+"px";
+  jk.style.left=(jcx-24)+"px"; jk.style.top=(jcy-24)+"px"; });
+jz.addEventListener("pointermove",e=>{ if(e.pointerId!==joyId)return;
+  let dx=e.clientX-jcx, dy=e.clientY-jcy; const len=Math.hypot(dx,dy), max=52;
+  if(len>max){dx*=max/len;dy*=max/len;}
+  joyX=dx/max; joyY=dy/max; jk.style.left=(jcx-24+dx)+"px"; jk.style.top=(jcy-24+dy)+"px"; });
+const joyEnd=e=>{ if(e.pointerId!==joyId)return; joyId=null;joyX=joyY=0; jb.style.display=jk.style.display="none"; };
+jz.addEventListener("pointerup",joyEnd); jz.addEventListener("pointercancel",joyEnd);
+
+$("gl").addEventListener("mousedown",()=>{ if(S.mode==="play"&&!isTouch){mouseDown=true;} });
+addEventListener("mouseup",()=>mouseDown=false);
+
+/* ============================================================ Weapons */
+let gunT=0;
+function fireGuns(){
+  AudioMan.gun();
+  const f=forward(), r=new THREE.Vector3(1,0,0).applyQuaternion(player.quat);
+  for(const s of [-1,1]){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(.7,5,5),new THREE.MeshBasicMaterial({color:0x9ffcff}));
+    m.position.copy(player.pos).addScaledVector(r,s*6).addScaledVector(f,7); scene.add(m);
+    pBullets.push({m,v:f.clone().multiplyScalar(720).addScaledVector(playerModel.getWorldDirection(new THREE.Vector3()),0),life:1.4});
+  }
+}
+let lockTarget=null;
+function updateLock(){
+  lockTarget=null;
+  let best=Math.cos(.42);            // 約24°以内の円錐に入れたらロック候補
+  const f=forward();
+  for(const e of enemies){
+    const to=e.g.position.clone().sub(player.pos);
+    const d=to.length();
+    if(d>1100||d<20)continue;
+    const c=f.dot(to.normalize());   // 1に近いほど正面
+    if(c>best){ best=c; lockTarget=e; }
+  }
+  const lb=$("lockBox");
+  if(lockTarget){
+    const p=lockTarget.g.position.clone().project(camera);
+    if(p.z<1){
+      lb.style.display="block";
+      lb.style.left=((p.x*.5+.5)*innerWidth)+"px";
+      lb.style.top=((-p.y*.5+.5)*innerHeight)+"px";
+    } else lb.style.display="none";
+  } else lb.style.display="none";
+}
+function fireMissile(){
+  if(S.mode!=="play"||S.paused)return;
+  if(S.missiles<=0){AudioMan.blip(220,180,.1,"square",.1);return;}
+  S.missiles--; $("msCount").textContent=S.missiles; AudioMan.missile();
+  const f=forward();
+  const m=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.5,.5,4,6),new THREE.MeshLambertMaterial({color:0xe8e8e8}));
+  body.rotation.x=Math.PI/2; m.add(body);
+  const flame=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,color:0xffa64d,transparent:true,depthWrite:false}));
+  flame.scale.set(4,4,1); flame.position.z=3; m.add(flame);
+  m.position.copy(player.pos).addScaledVector(f,8); scene.add(m);
+  missiles.push({m, dir:f.clone(), speed:260, life:6, target:lockTarget});
+}
+
+/* ============================================================ Pickups */
+let pickT=14;
+function spawnPickup(){
+  const type=Math.random()<.5?"hull":"msl";
+  const col=type==="hull"?0x3dffa0:0xffb340;
+  const g=new THREE.Mesh(new THREE.TorusGeometry(7,2,8,16),new THREE.MeshBasicMaterial({color:col}));
+  const f=forward(); const off=new THREE.Vector3((Math.random()-.5)*300,(Math.random()-.4)*120,-500-Math.random()*300).applyQuaternion(player.quat);
+  g.position.copy(player.pos).add(off); g.position.y=Math.max(terrainH(g.position.x,g.position.z)+40, g.position.y);
+  scene.add(g); pickups.push({g,type});
+}
+
+/* ============================================================ Waves / damage */
+function showBanner(txt){ const b=$("banner"); b.textContent=txt; b.style.opacity=1; setTimeout(()=>b.style.opacity=0,2200); }
+function damage(n){
+  S.hull-=n; $("dmgFlash").style.opacity=1; setTimeout(()=>$("dmgFlash").style.opacity=0,110);
+  AudioMan.hurt(); S.shake=.5;
+  if(S.hull<=0){ S.hull=0; gameOver(); }
+}
+function killEnemy(e,idx,bonus){
+  const pts=Math.round(ETYPES[e.type].score*(bonus||1));
+  S.score+=pts; save.stats.kills++; $("scoreV").textContent=S.score;
+  boom(e.g.position, e.type==="elite"?0xff8844:0xffcc66, e.type==="bomber");
+  if(Math.random()<.12) pickups.push((function(){const g=new THREE.Mesh(new THREE.TorusGeometry(7,2,8,16),new THREE.MeshBasicMaterial({color:0x3dffa0}));g.position.copy(e.g.position);scene.add(g);return {g,type:"hull"};})());
+  scene.remove(e.g); enemies.splice(idx,1);
+}
+
+/* ============================================================ Game flow */
+function startGame(){
+  AudioMan.ensure(); AudioMan.ui(); AudioMan.startEngine();
+  clearAll(); S.mode="play";S.paused=false;S.time=0;S.wave=1;S.waveT=0;S.score=0;S.hull=100;S.missiles=5;
+  S.speed=150;S.spawnT=2.5;S.kills=0;S.overT=0; save.stats.flights++; persist();
+  player.pos.set(0,300,0); player.quat.identity();
+  playerModel.visible=true;   // ← 撃墜演出で隠れた自機を再表示
+  $("menu").classList.add("hidden");$("over").classList.add("hidden");$("pause").classList.add("hidden");
+  $("hud").style.display="block"; $("btnPause").classList.remove("hidden");
+  showBanner(T("waveBanner",{n:1})); updateHUD();
+  if (screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(()=>{});
+}
+function gameOver(){
+  S.mode="over"; S.overT=1.4; AudioMan.stopEngine();
+  boom(player.pos.clone(),0xff7744,true); boom(player.pos.clone().add(new THREE.Vector3(6,2,4)),0xffcc55,true);
+  playerModel.visible=false;
+}
+function commitScore(){
+  const rec={s:S.score,w:S.wave,d:save.diff,t:Date.now()};
+  save.best.push(rec); save.best.sort((a,b)=>b.s-a.s); save.best=save.best.slice(0,5);
+  const isRec = save.best[0]===rec && S.score>0; persist();
+  $("finalScore").textContent=S.score;
+  $("newRec").classList.toggle("hidden",!isRec);
+  $("overDetail").textContent=`${T("wave")} ${S.wave} · ${T("sKills",{n:S.kills})}`;
+  $("over").classList.remove("hidden");
+}
+function toMenu(){ S.mode="menu"; S.paused=false; clearAll(); AudioMan.stopEngine();
+  $("hud").style.display="none";$("over").classList.add("hidden");$("pause").classList.add("hidden");
+  $("btnPause").classList.add("hidden"); $("menu").classList.remove("hidden"); playerModel.visible=true; renderMenuMeta(); }
+function togglePause(){
+  if(S.mode!=="play")return; S.paused=!S.paused;
+  $("pause").classList.toggle("hidden",!S.paused);
+  if(S.paused)AudioMan.stopEngine(); else {AudioMan.ensure();AudioMan.startEngine();}
+}
+
+/* ============================================================ Menu wiring */
+const langSel=$("langSel");
+for(const code in LANGS){ const o=document.createElement("option"); o.value=code; o.textContent=LANGS[code]; langSel.appendChild(o); }
+langSel.value=save.lang;
+langSel.addEventListener("change",()=>{ save.lang=langSel.value; persist(); applyLang(); AudioMan.ensure();AudioMan.ui(); });
+function syncSoundBtn(){ $("btnSound").textContent = save.sound? "🔊 ON":"🔇 OFF"; }
+$("btnSound").addEventListener("click",()=>{ AudioMan.ensure(); AudioMan.setSound(!save.sound); syncSoundBtn(); AudioMan.ui(); });
+document.querySelectorAll(".diffBtn").forEach(b=>{
+  b.classList.toggle("sel",b.dataset.d===save.diff);
+  b.addEventListener("click",()=>{ save.diff=b.dataset.d; persist(); AudioMan.ensure();AudioMan.ui();
+    document.querySelectorAll(".diffBtn").forEach(x=>x.classList.toggle("sel",x===b)); });
+});
+$("btnStart").addEventListener("click",startGame);
+$("btnResume").addEventListener("click",togglePause);
+$("btnRestart").addEventListener("click",startGame);
+$("btnAgain").addEventListener("click",startGame);
+$("btnQuit").addEventListener("click",toMenu);
+$("btnMenu2").addEventListener("click",toMenu);
+$("btnPause").addEventListener("click",togglePause);
+
+function renderMenuMeta(){
+  const hs=save.best.length? save.best.map((r,i)=>`${i+1}. ${r.s.toLocaleString()}  · W${r.w} · ${T(r.d)}`).join("\n") : "—";
+  $("hiScores").textContent=hs;
+  $("statsLine").textContent=`${T("sFlights",{n:save.stats.flights})} · ${T("sKills",{n:save.stats.kills})}`;
+  syncSoundBtn();
+}
+
+/* ============================================================ Resize / orientation */
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix();
+  const portrait = h>w;
+  $("rotateMsg").classList.toggle("show", portrait && isTouch);
+  if(portrait && isTouch && S.mode==="play" && !S.paused) togglePause();
+}
+addEventListener("resize",resize); addEventListener("orientationchange",()=>setTimeout(resize,120)); resize();
+document.addEventListener("visibilitychange",()=>{ if(document.hidden && S.mode==="play" && !S.paused) togglePause(); });
+
+/* ============================================================ Main loop */
+const clock=new THREE.Clock();
+function updateHUD(){
+  $("hullBar").style.width=S.hull+"%";
+  $("msCount").textContent=S.missiles;
+  $("scoreV").textContent=S.score;
+  $("waveV").textContent=S.wave;
+  $("spdV").textContent=Math.round(S.speed);
+  $("altV").textContent=Math.round(player.pos.y);
+}
+const radarCtx=$("radar").getContext("2d");
+function drawRadar(){
+  const c=radarCtx, R=120, range=900;
+  c.clearRect(0,0,R,R);
+  c.fillStyle="rgba(3,26,40,.7)"; c.beginPath();c.arc(R/2,R/2,R/2-2,0,7);c.fill();
+  c.strokeStyle="rgba(90,200,255,.5)"; c.stroke();
+  c.beginPath();c.arc(R/2,R/2,R/4,0,7);c.stroke();
+  const inv=player.quat.clone().invert();
+  for(const e of enemies){ const d=e.g.position.clone().sub(player.pos).applyQuaternion(inv);
+    const x=R/2+ (d.x/range)*(R/2-6), y=R/2+(d.z/range)*(R/2-6); // -z is forward → up
+    if(x<2||x>R-2||y<2||y>R-2)continue;
+    c.fillStyle=e===lockTarget?"#ff4d6a":(e.type==="elite"?"#ff9c4a":"#ffd24a");
+    c.fillRect(x-2,y-2,4,4); }
+  for(const p of pickups){ const d=p.g.position.clone().sub(player.pos).applyQuaternion(inv);
+    const x=R/2+(d.x/range)*(R/2-6), y=R/2+(d.z/range)*(R/2-6);
+    if(x<2||x>R-2||y<2||y>R-2)continue; c.fillStyle="#3dffa0"; c.beginPath();c.arc(x,y,2.5,0,7);c.fill(); }
+  c.fillStyle="#8be9ff"; c.beginPath(); c.moveTo(R/2,4);c.lineTo(R/2-4,12);c.lineTo(R/2+4,12);c.fill();
+}
+
+let acc=0;
+function loop(){
+  requestAnimationFrame(loop);
+  const dt=Math.min(clock.getDelta(),.05);
+
+  if(S.mode==="play" && !S.paused){
+    S.time+=dt;
+    /* input → control */
+    let pitch=joyY, yaw=-joyX;
+    if(keys.ArrowUp||keys.KeyW)pitch-=1; if(keys.ArrowDown||keys.KeyS)pitch+=1;
+    if(keys.ArrowLeft||keys.KeyA)yaw-=1; if(keys.ArrowRight||keys.KeyD)yaw+=1;
+    pitch=Math.max(-1,Math.min(1,pitch)); yaw=Math.max(-1,Math.min(1,yaw));
+    S.boost = (keys.ShiftLeft||keys.ShiftRight||touchBoost);
+    const wantFire = S.firing || mouseDown || keys.Space;
+
+    const targetSpeed=S.boost?250:150;
+    S.speed += (targetSpeed-S.speed)*Math.min(1,dt*1.5);
+    AudioMan.engine(S.speed,S.boost);
+
+    const dq=new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch*1.1*dt, yaw*.9*dt, 0,"XYZ"));
+    player.quat.multiply(dq).normalize();
+    const f=forward();
+    player.pos.addScaledVector(f,S.speed*dt);
+
+    /* terrain & bounds */
+    const gh=terrainH(player.pos.x,player.pos.z);
+    if(player.pos.y<gh+7){ player.pos.y=gh+7; damage(38*dt*3); boom(player.pos,0xffaa55,false); }
+    if(player.pos.y>1200)player.pos.y=1200;
+
+    /* model & camera */
+    playerModel.position.copy(player.pos); playerModel.quaternion.copy(player.quat);
+    modelRoll.rotation.z += ((-yaw*.6)-modelRoll.rotation.z)*Math.min(1,dt*5);
+    /* カメラ: 自機に剛体追従し、視軸を必ず自機中心に通す */
+    const camPos=player.pos.clone().add(new THREE.Vector3(0,5,28).applyQuaternion(player.quat));
+    camera.position.lerp(camPos,Math.min(1,dt*4.5));
+    if(S.shake>0){ S.shake-=dt; camera.position.x+=(Math.random()-.5)*S.shake*6; camera.position.y+=(Math.random()-.5)*S.shake*6; }
+    camera.lookAt(player.pos);    
+
+    /* world */
+    updateTiles(player.pos.x,player.pos.z);
+    for(const s of clouds){ // wrap
+      let dx=s.position.x-player.pos.x, dz=s.position.z-player.pos.z;
+      if(dx>CFIELD/2)s.position.x-=CFIELD; if(dx<-CFIELD/2)s.position.x+=CFIELD;
+      if(dz>CFIELD/2)s.position.z-=CFIELD; if(dz<-CFIELD/2)s.position.z+=CFIELD; }
+
+    /* waves & spawns */
+    S.waveT+=dt;
+    if(S.waveT>40){ S.waveT=0;S.wave++; S.score+=S.wave*50; showBanner(T("waveBanner",{n:S.wave})); AudioMan.blip(440,880,.3,"triangle",.2); }
+    S.spawnT-=dt*D().rate;
+    if(S.spawnT<=0 && enemies.length<Math.min(D().alive+S.wave,11)){ S.spawnT=Math.max(.9,3.4-S.wave*.22)+Math.random(); spawnEnemy(); }
+    pickT-=dt; if(pickT<=0){pickT=16+Math.random()*8;spawnPickup();}
+
+    /* guns */
+    gunT-=dt; if(wantFire&&gunT<=0){gunT=.12;fireGuns();}
+    updateLock();
+
+    /* bullets */
+    for(let i=pBullets.length-1;i>=0;i--){const b=pBullets[i]; b.m.position.addScaledVector(b.v,dt); b.life-=dt;
+      let dead=b.life<=0;
+      for(let j=enemies.length-1;j>=0&&!dead;j--){const e=enemies[j];
+        if(b.m.position.distanceTo(e.g.position)<e.r+3){ e.hp-=25; AudioMan.hit(); boom(b.m.position,0x9ffcff,false); dead=true;
+          if(e.hp<=0) killEnemy(e,j); } }
+      if(!dead && b.m.position.y<terrainH(b.m.position.x,b.m.position.z)) {dead=true;}
+      if(dead){scene.remove(b.m);pBullets.splice(i,1);} }
+
+    /* enemies */
+    for(let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; updateEnemy(e,dt);
+      if(e.g.position.distanceTo(player.pos)<e.r+5){ damage(22*D().dmg); killEnemy(e,i,.3); }
+      if(e.g.position.distanceTo(player.pos)>2600){ scene.remove(e.g); enemies.splice(i,1);} }
+
+    /* enemy bullets */
+    for(let i=eBullets.length-1;i>=0;i--){const b=eBullets[i]; b.m.position.addScaledVector(b.v,dt); b.life-=dt;
+      let dead=b.life<=0;
+      if(b.m.position.distanceTo(player.pos)<9){ damage(7*D().dmg); dead=true; boom(b.m.position,0xffaa66,false);}
+      if(dead){scene.remove(b.m);eBullets.splice(i,1);} }
+
+    /* missiles */
+    for(let i=missiles.length-1;i>=0;i--){const ms=missiles[i]; ms.life-=dt;
+      // ① 目標が撃破済みなら、進行方向前方の敵へ自動で再ロック
+      if(ms.target && !enemies.includes(ms.target)) ms.target=null;
+      if(!ms.target){ let best=-1, cand=null;
+        for(const e of enemies){ const to=e.g.position.clone().sub(ms.m.position); const d=to.length(); if(d>900)continue;
+          const c=ms.dir.dot(to.normalize()); if(c>best){best=c;cand=e;} }
+        if(cand && best>Math.cos(.6)) ms.target=cand; }
+      // ② リード標的への比例誘導（近づくほど強く旋回）
+      if(ms.target){
+        const dist=ms.m.position.distanceTo(ms.target.g.position);
+        const lead=ms.target.dir.clone().multiplyScalar(ms.target.spd*dist/ms.speed);   // 先回り
+        const want=ms.target.g.position.clone().add(lead).sub(ms.m.position).normalize();
+        const ang=ms.dir.angleTo(want);
+        if(ang>1e-4){ const maxTurn=dt*(2.5+Math.min(4, 400/Math.max(dist,60)));        // 近距離で回頭力アップ
+          ms.dir.lerp(want, Math.min(1, maxTurn/Math.max(ang,1e-4))).normalize(); }
+      }
+      ms.speed=Math.min(460,ms.speed+dt*160);
+      ms.m.position.addScaledVector(ms.dir,ms.speed*dt);
+      ms.m.lookAt(ms.m.position.clone().add(ms.dir));
+      // ③ ロケット炎の揺らめき
+      ms.t=(ms.t||0)+dt; const fl=ms.m.children[1];
+      if(fl){ const k=.85+Math.sin(ms.t*60)*.15+Math.random()*.12; fl.scale.set(3.4*k,3.4*k,1); }
+      // ④ 煙の軌跡（50msごとにスモークパフ）
+      ms.trail=(ms.trail||0)+dt; if(ms.trail>.02){ ms.trail=0; puff(ms.m.position.clone().addScaledVector(ms.dir,-2),0xdddddd,9); }
+      let dead=ms.life<=0;
+      for(let j=enemies.length-1;j>=0&&!dead;j--){const e=enemies[j];
+        if(ms.m.position.distanceTo(e.g.position)<e.r+16){ e.hp-=160; boom(ms.m.position,0xff8844,true);
+          if(e.hp<=0)killEnemy(e,j); dead=true; } }
+      if(!dead&&ms.m.position.y<terrainH(ms.m.position.x,ms.m.position.z)){boom(ms.m.position,0xffbb77,true);dead=true;}
+      if(dead){scene.remove(ms.m);missiles.splice(i,1);} }
+
+    /* pickups */
+    for(let i=pickups.length-1;i>=0;i--){const p=pickups[i];p.g.rotation.x+=dt*2;p.g.rotation.y+=dt*3;
+      if(p.g.position.distanceTo(player.pos)<26){ AudioMan.pickup();
+        if(p.type==="hull")S.hull=Math.min(100,S.hull+25); else S.missiles=Math.min(9,S.missiles+2);
+        scene.remove(p.g);pickups.splice(i,1); }
+      else if(p.g.position.distanceTo(player.pos)>2400){scene.remove(p.g);pickups.splice(i,1);} }
+
+    /* particles */
+    for(const p of parts){ if(p.life>0){ p.life-=dt; p.s.position.addScaledVector(p.v,dt); p.v.multiplyScalar(1-dt*.9);
+      const k=p.life/p.max; p.s.scale.setScalar(p.size*(1.6-k)); p.s.material.opacity=k; if(p.life<=0)p.s.visible=false; } }
+
+    updateHUD(); drawRadar();
+  }
+  else if(S.mode==="over"){
+    S.overT-=dt;
+    for(const p of parts){ if(p.life>0){ p.life-=dt; p.s.position.addScaledVector(p.v,dt);
+      const k=p.life/p.max; p.s.material.opacity=k; if(p.life<=0)p.s.visible=false; } }
+    camera.position.lerp(player.pos.clone().add(new THREE.Vector3(40,25,60)),dt*1.5);
+    camera.lookAt(player.pos);
+    if(S.overT<=0 && $("over").classList.contains("hidden")) commitScore();
+  }
+  else if(S.mode==="menu"){
+    const t=clock.elapsedTime;
+    camera.position.set(Math.sin(t*.1)*90,320,Math.cos(t*.1)*90);
+    camera.lookAt(0,240,0); playerModel.position.set(0,240,0); playerModel.rotation.y=t*.4;
+  }
+  renderer.render(scene,camera);
+}
+
+/* boot */
+applyLang(); syncSoundBtn(); renderMenuMeta();
+playerModel.visible=true; scene.add(playerModel);
+updateTiles(0,0);
+loop();
+</script>
+</body>
+</html>

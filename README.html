@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKYFIRE VECTOR ― README</title>
+<style>
+  :root { --bg:#071423; --panel:#0d2236; --line:#1e4a6d; --tx:#dff2ff; --sub:#8fc9ea; --acc:#ffb340; --hot:#4fd0ff; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--tx); line-height:1.75;
+    font-family:"Segoe UI","Hiragino Sans","Noto Sans JP","Yu Gothic",Arial,sans-serif; }
+  header { text-align:center; padding:48px 16px 28px;
+    background:radial-gradient(ellipse at 50% -30%, #124a7a 0%, var(--bg) 70%); }
+  h1 { font-size:clamp(26px,5vw,44px); letter-spacing:.1em; text-shadow:0 0 22px #17c8ff; }
+  .sub { color:var(--hot); letter-spacing:.3em; margin-top:6px; font-size:13px; }
+  nav { position:sticky; top:0; z-index:5; display:flex; gap:4px; justify-content:center; flex-wrap:wrap;
+    background:rgba(7,20,35,.92); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); padding:10px; }
+  nav a { color:var(--sub); text-decoration:none; font-size:13px; padding:5px 12px; border-radius:16px; border:1px solid transparent; }
+  nav a:hover { color:#fff; border-color:var(--hot); }
+  main { max-width:860px; margin:0 auto; padding:24px 18px 80px; }
+  section { margin-top:44px; }
+  h2 { font-size:24px; color:#fff; border-left:5px solid var(--acc); padding-left:12px; margin-bottom:14px; }
+  h3 { font-size:16px; color:var(--hot); margin:20px 0 8px; letter-spacing:.05em; }
+  ul { padding-left:22px; } li { margin:5px 0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px 20px; margin-top:14px; }
+  table { width:100%; border-collapse:collapse; margin:10px 0; font-size:14px; }
+  th,td { border:1px solid var(--line); padding:7px 10px; text-align:left; }
+  th { background:#0f2c45; color:#bfe6ff; }
+  code { background:#0a3050; color:#9beaff; padding:2px 7px; border-radius:5px; font-size:.92em; }
+  pre { background:#04101d; border:1px solid var(--line); border-radius:8px; padding:12px 14px; overflow:auto; margin:10px 0; }
+  pre code { background:none; padding:0; }
+  kbd { background:#123c5e; border:1px solid #3f7ba6; border-bottom-width:3px; border-radius:5px; padding:1px 7px; font-size:.85em; }
+  .badge { display:inline-block; font-size:11px; letter-spacing:.12em; color:#04121f; background:var(--acc);
+    border-radius:4px; padding:2px 8px; margin-right:6px; font-weight:700; }
+  footer { text-align:center; color:#5e93b5; font-size:12px; padding:30px 10px 50px; border-top:1px solid var(--line); }
+  a.ext { color:var(--hot); }
+</style>
+</head>
+<body>
+<header>
+  <h1>✈ SKYFIRE VECTOR</h1>
+  <div class="sub">蒼穹のベクトル ― 3D FLIGHT SHOOTER</div>
+</header>
+<nav>
+  <a href="#ja">日本語</a><a href="#en">English</a><a href="#zh">简体中文</a>
+  <a href="#ko">한국어</a><a href="#es">Español</a>
+</nav>
+<main>
+
+<!-- ======================= 日本語 ======================= -->
+<section id="ja">
+  <h2>日本語</h2>
+  <p><span class="badge">SINGLE FILE</span><span class="badge">WEBGL</span><span class="badge">MOBILE OK</span></p>
+  <p>3Dフライトシューティングゲーム。<b>単一の HTML ファイル完結</b>で、ブラウザがあれば PC でもスマートフォンでも遊べます。</p>
+  <div class="card">
+    <h3>特徴</h3>
+    <ul>
+      <li>🛩️ <b>3Dフライト</b>：Three.js による無限生成地形（山岳・海岸）・雲・追従カメラ</li>
+      <li>👾 <b>敵機3種</b>：戦闘機 / エリート / 爆撃機。ウェーブが上がるほど強化</li>
+      <li>🎯 <b>機関銃＆誘導ミサイル</b>：赤い LOCK 枠でホーミング（リード誘導・自動再ロック）</li>
+      <li>📱 <b>スマホ対応</b>：仮想スティック + FIRE / MSL / BST ボタン、横画面推奨</li>
+      <li>🔊 <b>サウンド On/Off</b>：WebAudio 合成音、M キーでも切替、設定は保存</li>
+      <li>🌍 <b>多言語対応</b>：日本語 / English / 简体中文 / 한국어 / Español（自動検出）</li>
+      <li>💾 <b>ローカルセーブ</b>：ハイスコアTOP5・難易度・累計戦績を localStorage に保存</li>
+    </ul>
+    <h3>動作環境</h3>
+    <ul><li>WebGL2 対応の最新ブラウザ（Chrome / Edge / Firefox / Safari）</li>
+        <li>インターネット接続（Three.js を CDN から読み込みます）</li></ul>
+    <h3>遊び方</h3>
+    <ol style="padding-left:22px">
+      <li><code>index.html</code> をブラウザで開く。スマホから遊ぶ場合はローカル配信：<pre><code>python -m http.server 8000   # http://&lt;PCのIP&gt;:8000/</code></pre></li>
+      <li>タイトル画面で難易度・言語・サウンドを選択 → <b>発進</b></li>
+    </ol>
+    <h3>操作方法</h3>
+    <table><tr><th>操作</th><th>PC</th><th>スマホ</th></tr>
+      <tr><td>操縦</td><td><kbd>WASD</kbd> / 矢印キー</td><td>左画面の仮想スティック</td></tr>
+      <tr><td>機関銃</td><td><kbd>SPACE</kbd></td><td>FIRE ボタン長押し</td></tr>
+      <tr><td>ミサイル</td><td><kbd>X</kbd> / <kbd>E</kbd></td><td>MSL ボタン</td></tr>
+      <tr><td>ブースト</td><td><kbd>SHIFT</kbd> 長押し</td><td>BST ボタン長押し</td></tr>
+      <tr><td>ポーズ</td><td><kbd>P</kbd></td><td>‖ ボタン</td></tr>
+      <tr><td>サウンド切替</td><td><kbd>M</kbd></td><td>タイトル画面の 🔊 ボタン</td></tr></table>
+    <h3>攻略ヒント</h3>
+    <ul><li>赤い <b>LOCK</b> 枠に捉えてからミサイル発射 → 自動追跡</li>
+        <li>環状ピックアップ：緑＝装甲 / 橙＝ミサイル弾数</li>
+        <li>40秒ごとにウェーブ上昇。敵の数・性能が増加</li></ul>
+    <h3>セーブデータ</h3>
+    <p>ブラウザの localStorage（キー: <code>skyfire_vector_save_v1</code>）に保存。消去は DevTools → Application → Local Storage から。</p>
+    <h3>技術構成</h3>
+    <ul><li><a class="ext" href="https://threejs.org/">Three.js</a> r160（CDN・ES Modules / importmap）</li>
+        <li>WebAudio API による効果音・エンジン音のリアルタイム合成</li>
+        <li>外部アセットなし（メッシュ・テクスチャ・音声はすべてコード生成）</li></ul>
+  </div>
+</section>
+
+<!-- ======================= English ======================= -->
+<section id="en">
+  <h2>English</h2>
+  <div class="card">
+    <p>A 3D flight shooter in a <b>single HTML file</b> — playable on desktop and mobile browsers.</p>
+    <h3>Features</h3>
+    <ul><li>🛩️ Infinite procedural terrain, clouds and chase camera (Three.js)</li>
+        <li>👾 3 enemy types: Fighter / Elite / Bomber, scaling by wave</li>
+        <li>🎯 Guns &amp; homing missiles with lead targeting and auto re-lock</li>
+        <li>📱 Virtual stick + FIRE / MSL / BST buttons (landscape recommended)</li>
+        <li>🔊 Synthesized sound with persisted On/Off toggle · 🌍 5 languages · 💾 Local high-score save</li></ul>
+    <h3>How to play</h3>
+    <ol style="padding-left:22px"><li>Open <code>index.html</code> (mobile: serve via <code>python -m http.server 8000</code>)</li>
+        <li>Pick difficulty / language / sound → <b>LAUNCH</b></li></ol>
+    <h3>Controls</h3>
+    <table><tr><th>Action</th><th>Keyboard</th><th>Touch</th></tr>
+      <tr><td>Steer</td><td>WASD / Arrows</td><td>Left virtual stick</td></tr>
+      <tr><td>Guns</td><td>SPACE</td><td>Hold FIRE</td></tr>
+      <tr><td>Missile</td><td>X / E</td><td>MSL</td></tr>
+      <tr><td>Boost</td><td>Hold SHIFT</td><td>Hold BST</td></tr>
+      <tr><td>Pause / Mute</td><td>P / M</td><td>‖ / 🔊</td></tr></table>
+    <h3>Tips &amp; saves</h3>
+    <ul><li>Lock (red box) before firing missiles · Green ring = hull, orange = missiles · Wave up every 40 s</li>
+        <li>Saves: <code>localStorage</code>, key <code>skyfire_vector_save_v1</code></li></ul>
+  </div>
+</section>
+
+<!-- ======================= 简体中文 ======================= -->
+<section id="zh">
+  <h2>简体中文</h2>
+  <div class="card">
+    <p><b>单个 HTML 文件</b>的 3D 飞行射击游戏，PC 与手机浏览器均可游玩。</p>
+    <h3>特色</h3>
+    <ul><li>🛩️ Three.js 无限地形、云层与追尾镜头</li>
+        <li>👾 三种敌机（战斗机 / 精英 / 轰炸机），随波次增强</li>
+        <li>🎯 机炮与诱导导弹（提前量追踪、自动重新锁定）</li>
+        <li>📱 虚拟摇杆 + FIRE / MSL / BST 按钮（建议横屏）· 🔊 音效开关 · 🌍 五语言 · 💾 本地存档</li></ul>
+    <h3>操作</h3>
+    <table><tr><th>动作</th><th>键盘</th><th>触屏</th></tr>
+      <tr><td>操纵</td><td>WASD / 方向键</td><td>左侧摇杆</td></tr>
+      <tr><td>机炮</td><td>空格</td><td>按住 FIRE</td></tr>
+      <tr><td>导弹</td><td>X / E</td><td>MSL</td></tr>
+      <tr><td>加速</td><td>按住 SHIFT</td><td>按住 BST</td></tr>
+      <tr><td>暂停</td><td>P</td><td>‖ 按钮</td></tr></table>
+    <p>存档：<code>localStorage</code>（键 <code>skyfire_vector_save_v1</code>）。</p>
+  </div>
+</section>
+
+<!-- ======================= 한국어 ======================= -->
+<section id="ko">
+  <h2>한국어</h2>
+  <div class="card">
+    <p><b>단일 HTML 파일</b>로 이루어진 3D 비행 슈팅 게임. PC와 모바일 브라우저에서 플레이 가능.</p>
+    <h3>특징</h3>
+    <ul><li>🛩️ Three.js 기반 무한 지형 · 구름 · 체이징 카메라</li>
+        <li>👾 적기 3종(전투기/엘리트/폭격기), 웨이브에 따라 강화</li>
+        <li>🎯 기관총 &amp; 호밍 미사일(리드 유도·자동 재록)</li>
+        <li>📱 가상 스틱 + FIRE / MSL / BST 버튼(가로 모드 권장) · 🔊 사운드 On/Off · 🌍 5개 언어 · 💾 로컬 저장</li></ul>
+    <h3>조작</h3>
+    <table><tr><th>동작</th><th>키보드</th><th>터치</th></tr>
+      <tr><td>조종</td><td>WASD / 방향키</td><td>왼쪽 가상 스틱</td></tr>
+      <tr><td>기관총</td><td>SPACE</td><td>FIRE 길누르기</td></tr>
+      <tr><td>미사일</td><td>X / E</td><td>MSL</td></tr>
+      <tr><td>부스트</td><td>SHIFT 길누르기</td><td>BST 길누르기</td></tr>
+      <tr><td>일시정지</td><td>P</td><td>‖ 버튼</td></tr></table>
+    <p>저장: <code>localStorage</code>(키 <code>skyfire_vector_save_v1</code>).</p>
+  </div>
+</section>
+
+<!-- ======================= Español ======================= -->
+<section id="es">
+  <h2>Español</h2>
+  <div class="card">
+    <p>Un shooter de vuelo 3D en <b>un solo archivo HTML</b>, jugable en escritorio y móviles.</p>
+    <h3>Características</h3>
+    <ul><li>🛩️ Terreno infinito procedural, nubes y cámara de persecución (Three.js)</li>
+        <li>👾 3 tipos de enemigos: caza / élite / bombardero, escalados por oleada</li>
+        <li>🎯 Cañones y misiles teledirigidos con predicción y re-lock automático</li>
+        <li>📱 Palanca virtual + botones FIRE / MSL / BST · 🔊 Sonido On/Off · 🌍 5 idiomas · 💾 Guardado local</li></ul>
+    <h3>Controles</h3>
+    <table><tr><th>Acción</th><th>Teclado</th><th>Táctil</th></tr>
+      <tr><td>Pilotar</td><td>WASD / Flechas</td><td>Palanca izquierda</td></tr>
+      <tr><td>Cañones</td><td>ESPACIO</td><td>Mantener FIRE</td></tr>
+      <tr><td>Misil</td><td>X / E</td><td>MSL</td></tr>
+      <tr><td>Turbo</td><td>Mantener SHIFT</td><td>Mantener BST</td></tr>
+      <tr><td>Pausa</td><td>P</td><td>Botón ‖</td></tr></table>
+    <p>Guardado: <code>localStorage</code>, clave <code>skyfire_vector_save_v1</code>.</p>
+  </div>
+</section>
+
+</main>
+<footer>SKYFIRE VECTOR ― 蒼穹のベクトル · Three.js r160 (MIT) · No external assets — everything generated in code.</footer>
+</body>
+</html>
